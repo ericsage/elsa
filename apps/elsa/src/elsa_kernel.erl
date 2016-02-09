@@ -15,11 +15,11 @@ init({tcp, http}, Req, _Opts) ->
 
 handle(Req, State) ->
   {Kernel, Request} = extract_kernel(Req),
-  Response = case can_process(Kernel, Request) of
+  {Code, Headers, Body} = case can_process(Kernel) of
     true -> monitor(Kernel);
-    false -> {404}
+    false -> {404, [], <<>>}
   end,
-  {ok, Response, State}.
+  {ok, cowboy_req:reply(Code, Headers, Body, Request), State}.
 
 extract_kernel(Req) ->
   {Version, Req1} = cowboy_req:binding(version, Req),
@@ -37,7 +37,7 @@ extract_kernel(Req) ->
          , body=Body
          , timeout=binary_to_integer(Timeout)}, Request}.
 
-can_process(#kernel{service=Service, version=Version}, Req) ->
+can_process(#kernel{service=Service, version=Version}) ->
   elsa_service:available(Service, Version).
 
 monitor(Kernel = #kernel{method=Method, service=Service, version=Version, endpoint=Endpoint, timeout=Timeout}) ->
