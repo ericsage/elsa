@@ -11,7 +11,7 @@
          checkin/3,
          exists/1,
          exists/2,
-         existed/2]).
+         count/2]).
 
 -spec all() -> [] | [any()].
 all() ->
@@ -23,7 +23,7 @@ versions(Service) when is_binary(Service) ->
 
 -spec instances(binary(), binary()) -> [] | [any()].
 instances(Service, Version) ->
-  case existed(Service, Version) of
+  case exists(Service, Version) of
     false -> [];
     true -> elsa_instance_database:all(Service, Version)
   end.
@@ -64,8 +64,7 @@ exists(Service, Version) ->
      Pid -> true
   end.
 
-existed(Service, Version) ->
-  case mnesia:table_info(elsa_tasks, storage_type) of
-    {aborted, {no_exists, _, _}} -> false;
-    _ -> true
-  end.
+count(Service, Version) ->
+  {service, _, _, I, _, _} = elsa_service_database:retreive(Service, Version),
+  I.
+
