@@ -73,10 +73,7 @@ all(Service, Version) ->
   elsa_table:do(qlc:q([S || S <- mnesia:table(service(Service, Version))])).
 
 exists(Service, Version) ->
-  case mnesia:table_info(service(Service, Version), storage_type) of
-    {aborted, {no_exists, _, _}} -> false;
-    _ -> true
-  end.
+  lists:member(service(Service, Version), mnesia:system_info(tables)).
 
 update(Service, Version, Location, Registered, Capacity, Out) ->
   Instance = #instance{location=Location,
