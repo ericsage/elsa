@@ -7,10 +7,9 @@
          instance/3,
          register/1,
          unregister/1,
-         checkout/2,
+         checkout/3,
          checkin/3,
-         exists/1,
-         exists/2,
+         available/2,
          count/2]).
 
 -spec all() -> [] | [any()].
@@ -23,7 +22,7 @@ versions(Service) when is_binary(Service) ->
 
 -spec instances(binary(), binary()) -> [] | [any()].
 instances(Service, Version) ->
-  case exists(Service, Version) of
+  case elsa_instance_database:exists(Service, Version) of
     false -> [];
     true -> elsa_instance_database:all(Service, Version)
   end.
@@ -37,34 +36,33 @@ register(Registration) ->
 unregister(Registration) ->
   elsa_registry:unregister(Registration).
 
-checkout(Service, Version) ->
-  ensure_service(Service, Version),
-  elsa_service_worker:checkout(Service, Version).
+checkout(Service, Version, Delay) ->
+  case elsa_service_worker:checkout(Service, Version) of
+    unavailable ->
+      timer:sleep(Delay),
+      checkout(Service, Version, Delay);
+    Instance -> Instance
+  end.
 
 checkin(Service, Version, Instance) ->
   lager:info("Checking in instance of service: ~s", [Service]),
-  ensure_service(Service, Version),
   elsa_service_worker:checkin(Service, Version, Instance).
 
-ensure_service(Service, Version) ->
-  case exists(Service, Version) of
-     false -> elsa_service_worker_sup:start_child(Service, Version);
-     true -> ok
-  end.
-
-exists(Service) ->
-  case length(elsa_service_database:versions(Service)) of
-     0 -> false;
-     _ -> true
-  end.
-
-exists(Service, Version) ->
-  case elsa_service_worker:find(Service, Version) of
-     undefined -> false;
-     Pid -> true
+available(Service, Version) ->
+  case elsa_instance_database:exists(Service, Version) of
+    false -> false;
+    true ->
+      case elsa_service_worker:find(Service, Version) of
+        undefined ->
+          elsa_service_worker_sup:start_child(Service, Version);
+        _ -> ok
+      end,
+      case count(Service, Version) of
+        0 -> false;
+        _ -> true
+      end
   end.
 
 count(Service, Version) ->
   {service, _, _, I, _, _} = elsa_service_database:retreive(Service, Version),
   I.
-

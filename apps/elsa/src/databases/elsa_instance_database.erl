@@ -9,7 +9,8 @@
          checkout/2,
          checkin/3,
          retreive/3,
-         all/2]).
+         all/2,
+         exists/2]).
 
 -include_lib("stdlib/include/qlc.hrl").
 
@@ -70,6 +71,12 @@ retreive(Service, Version, Location) ->
 -spec all(binary(), binary()) -> [] | [#instance{}].
 all(Service, Version) ->
   elsa_table:do(qlc:q([S || S <- mnesia:table(service(Service, Version))])).
+
+exists(Service, Version) ->
+  case mnesia:table_info(service(Service, Version), storage_type) of
+    {aborted, {no_exists, _, _}} -> false;
+    _ -> true
+  end.
 
 update(Service, Version, Location, Registered, Capacity, Out) ->
   Instance = #instance{location=Location,

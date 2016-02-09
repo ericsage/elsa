@@ -38,7 +38,7 @@ extract_kernel(Req) ->
          , timeout=binary_to_integer(Timeout)}, Request}.
 
 can_process(#kernel{service=Service, version=Version}, Req) ->
-  true.
+  elsa_service:available(Service, Version).
 
 monitor(Kernel = #kernel{method=Method, service=Service, version=Version, endpoint=Endpoint, timeout=Timeout}) ->
   lager:info("Request method: ~s, service: ~s, version: ~s, endpoint: ~s created.", [Method, Service, Version, Endpoint]),
@@ -60,7 +60,7 @@ process(Monitor, Kernel) ->
   end.
 
 call(Kernel = #kernel{method=Method, service=Service, version=Version, headers=Headers, body=Body, endpoint=Endpoint}) ->
-  Instance = elsa_service:checkout(Service, Version),
+  Instance = elsa_service:checkout(Service, Version, 5000),
   URL = <<Instance/binary, Endpoint/binary>>,
   case elsa_http_client:call(Method, URL, Headers, Body) of
     {ok, Status, RespHeaders, RespBody} ->
