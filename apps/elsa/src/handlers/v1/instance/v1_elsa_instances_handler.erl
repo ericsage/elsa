@@ -23,7 +23,7 @@ content_types_provided(Req, Instance) ->
   {[{<<"application/json">>, json_response}], Req, Instance}.
 
 resource_exists(Req, {instance, Service, Version}) ->
-  {elsa_service:existed(Service, Version), Req, {instance, Service, Version}}.
+  {elsa_instance_database:exists(Service, Version), Req, {instance, Service, Version}}.
 
 json_response(Req, {instance, Service, Version}) ->
   Instances = elsa_json:to([[

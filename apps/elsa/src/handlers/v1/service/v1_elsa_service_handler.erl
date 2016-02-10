@@ -23,7 +23,11 @@ content_types_provided(Req, Service) ->
   {[{<<"application/json">>, json_response}], Req, Service}.
 
 resource_exists(Req, {service, Service}) ->
-  {elsa_service:exists(Service), Req, {service, Service}}.
+  Exists = case elsa_service:versions(Service) of
+    [] -> false;
+    _ -> true
+  end,
+  {Exists, Req, {service, Service}}.
 
 json_response(Req, {service, Service}) ->
   S = elsa_json:to([
