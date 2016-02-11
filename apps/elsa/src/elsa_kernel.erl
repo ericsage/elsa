@@ -10,16 +10,19 @@
 -record(kernel, {method, service, version, endpoint, headers, body, timeout}).
 
 init({tcp, http}, Req, _Opts) ->
-  lager:info("Service request received: ~w", [Req]),
+  lager:info("Service request received: ~p", [Req]),
   {ok, Req, undefined}.
 
 handle(Req, State) ->
   {Kernel, Request} = extract_kernel(Req),
   {Code, Headers, Body} = case can_process(Kernel) of
     true -> monitor(Kernel);
-    false -> {404, [], <<>>}
+    false ->
+      lager:error("Kernel ~p requested a non-available service.", [Kernel]),
+      {404, [], <<>>}
   end,
-  {ok, cowboy_req:reply(Code, Headers, Body, Request), State}.
+  {ok, Response} = cowboy_req:reply(Code, Headers, Body, Request),
+  {ok, Response, State}.
 
 extract_kernel(Req) ->
   {Version, Req1} = cowboy_req:binding(version, Req),
@@ -32,7 +35,7 @@ extract_kernel(Req) ->
   {#kernel{method=Method
          , service=Service
          , version=Version
-         , endpoint=elsa_handler:truncate(Version, Service, Endpoint)
+         , endpoint=truncate(Version, Service, Endpoint)
          , headers=Headers
          , body=Body
          , timeout=binary_to_integer(Timeout)}, Request}.
@@ -48,7 +51,7 @@ monitor(Kernel = #kernel{method=Method, service=Service, version=Version, endpoi
   after Timeout ->
     ID = elsa_task:new(self(), Service, Version, Method, Endpoint),
     Conn ! {timeout, ID},
-    elsa_handler:task(Service, Version, ID)
+    task(Service, Version, ID)
   end.
 
 process(Monitor, Kernel) ->
@@ -64,13 +67,29 @@ call(Kernel = #kernel{method=Method, service=Service, version=Version, headers=H
   URL = <<Instance/binary, Endpoint/binary>>,
   case elsa_http_client:call(Method, URL, Headers, Body) of
     {ok, Status, RespHeaders, RespBody} ->
-      elsa_service:checkin(Service, Version, Instance),
+      elsa_service:checkin(Service, Version, Instance, true),
       {Status, RespHeaders, RespBody};
     retry ->
-      elsa_service:checkin(Service, Version, Instance),
+      elsa_service:checkin(Service, Version, Instance, false),
       lager:error("Connection to ~s for service: ~s version: ~s method: ~s endpoint: ~s failed", [Instance, Service, Version, Method, URL]),
       call(Kernel)
   end.
 
 terminate(_Reason, Req, State) ->
   ok.
+
+truncate(Version, Name, Endpoint) ->
+  Vlength = length(binary_to_list(Version)),
+  Nlength = length(binary_to_list(Name)),
+  list_to_binary(string:sub_string(binary_to_list(Endpoint), (3 + Vlength + Nlength))).
+
+task(Service, Version, ID) ->
+  {300,
+    [{<<"content-type">>, <<"application/json">>}],
+    elsa_handler:to_json([
+      {<<"status">>, 300},
+      {<<"service">>, Service},
+      {<<"version">>, Version},
+      {<<"task_id">>, ID}
+    ])
+  }.

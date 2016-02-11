@@ -8,7 +8,7 @@
          register/4,
          unregister/3,
          checkout/2,
-         checkin/3]).
+         checkin/4]).
 
 -export([init/1,
          handle_cast/2,
@@ -44,8 +44,8 @@ unregister(Service, Version, Instance) when is_binary(Service), is_binary(Versio
 checkout(Service, Version) when is_binary(Service), is_binary(Version) ->
   gen_server:call(find(Service, Version), checkout).
 
-checkin(Service, Version, Instance) when is_binary(Service), is_binary(Version), is_binary(Instance) ->
-  gen_server:call(find(Service, Version), {checkin, Instance}).
+checkin(Service, Version, Instance, Available) when is_binary(Service), is_binary(Version), is_binary(Instance) ->
+  gen_server:call(find(Service, Version), {checkin, Instance, Available}).
 
 handle_call({register, Instance, Capacity}, _From, State = {service, {Service, Version}}) ->
   elsa_service_database:instance_added(Service, Version, Capacity),
@@ -58,9 +58,9 @@ handle_call({unregister, Instance}, _From, State = {service, {Service, Version}}
   elsa_instance_database:unregister(Service, Version, Instance),
   {reply, ok, State};
 
-handle_call({checkin, Instance}, _From, State = {service, {Service, Version}}) ->
-  elsa_service_database:instance_in(Service, Version),
-  elsa_instance_database:checkin(Service, Version, Instance),
+handle_call({checkin, Instance, Available}, _From, State = {service, {Service, Version}}) ->
+  Capacity = elsa_instance_database:checkin(Service, Version, Instance, Available),
+  elsa_service_database:instance_in(Service, Version, Capacity, Available),
   {reply, ok, State};
 
 handle_call(checkout, _From, State = {service, {Service, Version}}) ->

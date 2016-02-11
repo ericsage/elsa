@@ -8,7 +8,7 @@
          register/1,
          unregister/1,
          checkout/3,
-         checkin/3,
+         checkin/4,
          available/2,
          count/2]).
 
@@ -44,9 +44,9 @@ checkout(Service, Version, Delay) ->
     Instance -> Instance
   end.
 
-checkin(Service, Version, Instance) ->
+checkin(Service, Version, Instance, Available) ->
   lager:info("Checking in instance of service: ~s", [Service]),
-  elsa_service_worker:checkin(Service, Version, Instance).
+  elsa_service_worker:checkin(Service, Version, Instance, Available).
 
 available(Service, Version) ->
   case elsa_instance_database:exists(Service, Version) of
@@ -64,5 +64,5 @@ available(Service, Version) ->
   end.
 
 count(Service, Version) ->
-  {service, _, _, I, _, _} = elsa_service_database:retreive(Service, Version),
+  {service, _, _, I, _, _, _, _} = elsa_service_database:retreive(Service, Version),
   I.
