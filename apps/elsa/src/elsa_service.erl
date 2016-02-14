@@ -52,11 +52,6 @@ available(Service, Version) ->
   case elsa_instance_database:exists(Service, Version) of
     false -> false;
     true ->
-      case elsa_service_worker:find(Service, Version) of
-        undefined ->
-          elsa_service_worker_sup:start_child(Service, Version);
-        _ -> ok
-      end,
       case count(Service, Version) of
         0 -> false;
         _ -> true

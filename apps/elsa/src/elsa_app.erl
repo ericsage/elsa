@@ -7,14 +7,14 @@
         ,stop/1]).
 
 start(_StartType, _StartArgs) ->
-    lager:info("Starting ELSA."),
-    lager:info("Setting up database."),
-    database_setup([node()]),
-    lager:info("Starting router."),
-    elsa_router:start(),
-    lager:info("Router started."),
-    lager:info("Starting ELSA supervisor."),
-    'elsa_sup':start_link().
+    ok.
+    % lager:info("Starting ELSA."),
+    % lager:info("Setting up database."),
+    % database_setup([node()]),
+    % lager:info("Starting router."),
+    % elsa_router:start(),
+    % lager:info("Router started."),
+    % ok.
 
 stop(_State) ->
     database_teardown([node()]),
@@ -29,9 +29,9 @@ database_setup(Nodes) ->
   mnesia:start(),
   rpc:multicall(Nodes, application, start, [mnesia]),
   lager:info("Mnesia started."),
-  elsa_task_database:load(),
+  %elsa_task_database:load(),
   lager:info("Task database started."),
-  elsa_service_database:load(),
+  %elsa_service_database:load(),
   lager:info("Service database started.").
 
 database_teardown(Nodes) ->
